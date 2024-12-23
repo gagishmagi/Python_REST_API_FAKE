@@ -41,41 +41,6 @@ def get_one_post(id):
         return {"status": "error", "message": "Post not found", "status_code": 404}, 404
 
 
-    
-
-    # user = {
-    #     "id": id,
-    #     "title": "post 1",
-    #     "body": "body of post 1",
-    #     "userId": 1
-    # }
-    # return jsonify(user), 201
-
-    # response = Response(
-    #     response=json.dumps({
-    #         "id": int(id),
-    #         "title": "post 1",
-    #         "body": "body of post 1",
-    #         "userId": 1
-    #     }),
-    #     status=200,
-    #     mimetype='application/json'
-    # )
-
-    return response
-
-
-# @app.route('/posts', methods=['POST'])
-# @app.post('/posts')
-# def create_single_post(id):
-#     return {
-#         "id": id,
-#         "title": "post 1",
-#         "body": "body of post 1",
-#         "userId": 1
-#     }
-
-
 @app.post('/posts')
 def create_single_post():
     post = request.get_json()
@@ -105,6 +70,7 @@ def create_single_post():
     # )
 
     return jsonify(post), 201
+
 
 @app.put('/posts/<id>')
 def update_post(id):
@@ -153,11 +119,13 @@ def delete_post(id):
     db_file_path = "db.json"
     with open(db_file_path, "r+") as db:
         db_data = json.load(db)
-        db_data["posts"] = [post for post in db_data["posts"] if post["id"] != int(id)]
+        db_data["posts"] = [
+            post for post in db_data["posts"] if post["id"] != int(id)]
         db.seek(0)
         json.dump(db_data, db, indent=4)
         db.truncate()
 
     return {"status": "success", "message": "Post deleted"}, 200
+
 
 print(f"Running json Server on port { os.getenv('PORT')}")
