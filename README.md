@@ -20,7 +20,7 @@ there is an integration with pytest
 ## To run the tests in the tests folder run this command
 
 ```bash
-cd pytest; pytest
+cd tests; pytest
 ```
 
 ### but first run the application server!!!
