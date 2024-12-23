@@ -19,7 +19,7 @@ def get_all_posts():
     db_file_path = "db.json"
     with open(db_file_path) as db:
         db_data = json.load(db)
-        return db_data["posts"]
+        return jsonify(db_data["posts"])
 
 
 @app.get('/posts/<id>')
@@ -36,23 +36,12 @@ def get_one_post(id):
         db_data_filtered = list(filter(find_by_id, db_data["posts"]))
         post = db_data_filtered[0]
 
-        return post
+        return jsonify(post)
     except IndexError:
         return {"status": "error", "message": "Post not found", "status_code": 404}, 404
 
-    # return {
-    #     "id": id,
-    #     "title": "post 1",
-    #     "body": "body of post 1",
-    #     "userId": 1
-    # }
 
-    # return jsonify({
-    #     "id": id,
-    #     "title": "post 1",
-    #     "body": "body of post 1",
-    #     "userId": 1
-    # })
+    
 
     # user = {
     #     "id": id,
@@ -104,7 +93,19 @@ def create_single_post():
         json.dump(db_data, db, indent=4)
         db.truncate()
 
+    # response = Response(
+    #     response=json.dumps({
+    #         "id": int(id),
+    #         "title": "post 1",
+    #         "body": "body of post 1",
+    #         "userId": 1
+    #     }),
+    #     status=200,
+    #     mimetype='application/json'
+    # )
+
     return jsonify(post), 201
+
 @app.put('/posts/<id>')
 def update_post(id):
     updated_post = request.get_json()
