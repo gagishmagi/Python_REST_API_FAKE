@@ -1,131 +1,101 @@
-from flask import Flask, Response, jsonify, request
+from flask import Flask, jsonify, request
 import json
-import sys
 import os
-
 
 app = Flask(__name__)
 
+def get_db_data():
+    db_file_path = "db.json"
+    with open(db_file_path) as db:
+        return json.load(db)
+
+def save_db_data(db_data):
+    db_file_path = "db.json"
+    with open(db_file_path, "w") as db:
+        json.dump(db_data, db, indent=4)
 
 @app.get('/')
 def home_page():
     return "<h1>Welcome Home page</h1>"
 
-# @app.route('/posts', methods=["GET"])
+@app.get('/<resource>')
+def get_all(resource):
+    db_data = get_db_data()
+    if resource in db_data:
+        return jsonify(db_data[resource])
+    return {"status": "error", "message": "Resource not found"}, 404
 
+@app.get('/<resource>/<int:id>')
+def get_one(resource, id):
+    db_data = get_db_data()
+    if resource in db_data:
+        items = db_data[resource]
+        item = next((item for item in items if item["id"] == id), None)
+        if item:
+            return jsonify(item)
+        return {"status": "error", "message": "Item not found"}, 404
+    return {"status": "error", "message": "Resource not found"}, 404
 
-@app.get('/posts')
-def get_all_posts():
-    db_file_path = "db.json"
-    with open(db_file_path) as db:
-        db_data = json.load(db)
-        return jsonify(db_data["posts"])
-
-
-@app.get('/posts/<id>')
-def get_one_post(id):
-
-    db_file_path = "db.json"
-    with open(db_file_path) as db:
-        db_data = json.load(db)
-
-    def find_by_id(post):
-        return post["id"] == int(id)
-
-    try:
-        db_data_filtered = list(filter(find_by_id, db_data["posts"]))
-        post = db_data_filtered[0]
-
-        return jsonify(post)
-    except IndexError:
-        return {"status": "error", "message": "Post not found", "status_code": 404}, 404
-
-
-@app.post('/posts')
-def create_single_post():
-    post = request.get_json()
-
-    if not post:
+@app.post('/<resource>')
+def create(resource):
+    item = request.get_json()
+    if not item:
         return {"status": "error", "message": "Invalid payload"}, 400
 
-    db_file_path = "db.json"
-    with open(db_file_path, "r+") as db:
-        db_data = json.load(db)
-        new_id = max(post["id"] for post in db_data["posts"]) + 1
-        post["id"] = new_id
-        db_data["posts"].append(post)
-        db.seek(0)
-        json.dump(db_data, db, indent=4)
-        db.truncate()
+    db_data = get_db_data()
+    if resource not in db_data:
+        db_data[resource] = []
 
-    # response = Response(
-    #     response=json.dumps({
-    #         "id": int(id),
-    #         "title": "post 1",
-    #         "body": "body of post 1",
-    #         "userId": 1
-    #     }),
-    #     status=200,
-    #     mimetype='application/json'
-    # )
+    new_id = max((item["id"] for item in db_data[resource]), default=0) + 1
+    item["id"] = new_id
+    db_data[resource].append(item)
+    save_db_data(db_data)
+    return jsonify(item), 201
 
-    return jsonify(post), 201
-
-
-@app.put('/posts/<id>')
-def update_post(id):
-    updated_post = request.get_json()
-
-    if not updated_post:
+@app.put('/<resource>/<int:id>')
+def update(resource, id):
+    updated_item = request.get_json()
+    if not updated_item:
         return {"status": "error", "message": "Invalid payload"}, 400
 
-    db_file_path = "db.json"
-    with open(db_file_path, "r+") as db:
-        db_data = json.load(db)
-        for post in db_data["posts"]:
-            if post["id"] == int(id):
-                post.update(updated_post)
-                db.seek(0)
-                json.dump(db_data, db, indent=4)
-                db.truncate()
-                return jsonify(post), 200
+    db_data = get_db_data()
+    if resource in db_data:
+        items = db_data[resource]
+        for item in items:
+            if item["id"] == id:
+                item.update(updated_item)
+                save_db_data(db_data)
+                return jsonify(item), 200
+        return {"status": "error", "message": "Item not found"}, 404
+    return {"status": "error", "message": "Resource not found"}, 404
 
-    return {"status": "error", "message": "Post not found"}, 404
-
-
-@app.patch('/posts/<id>')
-def partially_update_post(id):
+@app.patch('/<resource>/<int:id>')
+def partially_update(resource, id):
     updated_fields = request.get_json()
-
     if not updated_fields:
         return {"status": "error", "message": "Invalid payload"}, 400
 
-    db_file_path = "db.json"
-    with open(db_file_path, "r+") as db:
-        db_data = json.load(db)
-        for post in db_data["posts"]:
-            if post["id"] == int(id):
-                post.update(updated_fields)
-                db.seek(0)
-                json.dump(db_data, db, indent=4)
-                db.truncate()
-                return jsonify(post), 200
+    db_data = get_db_data()
+    if resource in db_data:
+        items = db_data[resource]
+        for item in items:
+            if item["id"] == id:
+                item.update(updated_fields)
+                save_db_data(db_data)
+                return jsonify(item), 200
+        return {"status": "error", "message": "Item not found"}, 404
+    return {"status": "error", "message": "Resource not found"}, 404
 
-    return {"status": "error", "message": "Post not found"}, 404
+@app.delete('/<resource>/<int:id>')
+def delete(resource, id):
+    db_data = get_db_data()
+    if resource in db_data:
+        items = db_data[resource]
+        db_data[resource] = [item for item in items if item["id"] != id]
+        save_db_data(db_data)
+        return {"status": "success", "message": "Item deleted"}, 200
+    return {"status": "error", "message": "Resource not found"}, 404
 
-
-@app.delete('/posts/<id>')
-def delete_post(id):
-    db_file_path = "db.json"
-    with open(db_file_path, "r+") as db:
-        db_data = json.load(db)
-        db_data["posts"] = [
-            post for post in db_data["posts"] if post["id"] != int(id)]
-        db.seek(0)
-        json.dump(db_data, db, indent=4)
-        db.truncate()
-
-    return {"status": "success", "message": "Post deleted"}, 200
-
-
-print(f"Running json Server on port { os.getenv('PORT')}")
+if __name__ == '__main__':
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
